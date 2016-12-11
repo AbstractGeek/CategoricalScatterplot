@@ -15,7 +15,7 @@ xlabel('Country of Origin')
 ylabel('Miles per Gallon (MPG)')
 ```
 The traditional box plot of the car sample dataset looks like this:
-![](https://github.com/AbstractGeek/CategoricalScatterplot/img/box-plot.png "box plot")
+![](https://github.com/AbstractGeek/CategoricalScatterplot/blob/master/img/box-plot.png "box plot")
 
 ```
 % Use CategoricalScatterplot
@@ -25,7 +25,7 @@ xlabel('Country of Origin')
 ylabel('Miles per Gallon (MPG)')
 ```
 The categoricalscatterplot of the same sample dataset looks like this:
-![](https://github.com/AbstractGeek/CategoricalScatterplot/img/example-1.png "categoricalscatterplot")
+![](https://github.com/AbstractGeek/CategoricalScatterplot/blob/master/img/example-1.png "categoricalscatterplot")
 
 ### Example 2: Customizing CategoricalScatterplot plots
 ```
@@ -33,7 +33,7 @@ The categoricalscatterplot of the same sample dataset looks like this:
 CategoricalScatterplot(MPG,cellstr(Origin),'WhiskerLine',false,'BoxColor',[0.8471 0.8627 0.8392],'WhiskerColor',[0.8235 0.7412 0.0392])
 ```
 Categorical Scatter plots can easily be customized using the input arguments to the function. Here is a minimalistic version of the above plot:
-![alt text](https://github.com/AbstractGeek/CategoricalScatterplot/img/example-2.png "categoricalscatterplot")
+![alt text](https://github.com/AbstractGeek/CategoricalScatterplot/blob/master/img/example-2.png "minimalistic categoricalscatterplot")
 
 
 ### Syntax
