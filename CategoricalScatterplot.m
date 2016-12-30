@@ -86,7 +86,7 @@ parse(p, X, varargin{:});
 parsed = p.Results;
 Group = parsed.Group;
 
-if size(X,2) == 1
+if (size(X,2) == 1) || (size(X,1) == 1)
     %% Convert the groups into a cell array
     % Ensure group exists
     if isempty(Group)
@@ -95,6 +95,11 @@ if size(X,2) == 1
     
     if ischar(Group)
         Group = cellstr(Group);
+    end
+    
+    % Make it into column vectors
+    if (size(X,1) == 1)
+        X = X';        
     end
     
     % handle groups
