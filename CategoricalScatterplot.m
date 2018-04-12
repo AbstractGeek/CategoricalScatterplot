@@ -11,8 +11,7 @@ function [] = CategoricalScatterplot(X, varargin)
 %
 % Optional Inputs:
 % Group - Grouping variables - vector
-% 'Color' - nx3 matrix for n groups or 1x3 vector for all groups or a
-% character color ('k', 'r', etc) for all groups
+% 'Color' - nx3 matrix for n groups or 1x3 vector for all groups
 % 'Labels' - A cell string containing labels for all the groups
 %
 % Plot parameters (to tweak style):
@@ -49,8 +48,8 @@ p = inputParser;
 % Main arguments
 addRequired(p, 'X', @(X) ismatrix(X));
 addOptional(p, 'Group', [], @(X) ismatrix(X) || iscellstr(X) || ischar(X));
-addOptional(p, 'Color', 'k', @(X) all(size(X) == [length(unique(Group)), 3]) ||...
-    all(size(X) == [1, 3]) || (ischar(X) && length(X)==1));
+addOptional(p, 'Color', [0 0 0], @(x) all(size(x) == size(X)) ||...
+    all([size(X,1),3] == size(x)) || all(size(x) == [1, 3]));
 addOptional(p, 'Labels', false, @(X) iscellstr(X));
 
 % Scatter parameters
@@ -81,10 +80,30 @@ addParameter(p, 'WhiskerLineStyle', '--', ...
 addParameter(p, 'BoxLineWidth', 1.0, @(x) isnumeric(x));
 addParameter(p, 'MedianLineWidth', 1.0, @(x) isnumeric(x));
 addParameter(p, 'WhiskerLineWidth', 1.0, @(x) isnumeric(x));
+% Alternate Y axis
+addParameter(p, 'YYaxis', false, @(X) ismatrix(X) || iscellstr(X) || ischar(X));
 % Parse inputs and unpack structure
 parse(p, X, varargin{:});
 parsed = p.Results;
 Group = parsed.Group;
+
+% Handle color input
+if all(size(parsed.Color)==[1,3])
+    if isempty(Group)
+        Color = repmat({parsed.Color}, size(X,1), size(X,2));
+    else
+        Color = repmat(parsed.Color, length(X), 1);
+    end
+else
+    Color = parsed.Color;
+end
+
+% Handle fill input
+if all(size(parsed.FillMarker) == [1,1])
+    FillMarker = repmat(parsed.FillMarker,size(X,1),size(X,2));
+else
+    FillMarker = parsed.FillMarker;
+end
 
 if (size(X,2) == 1) || (size(X,1) == 1)
     %% Convert the groups into a cell array
@@ -99,7 +118,7 @@ if (size(X,2) == 1) || (size(X,1) == 1)
     
     % Make it into column vectors
     if (size(X,1) == 1)
-        X = X';        
+        X = X';
     end
     
     % handle groups
@@ -107,14 +126,17 @@ if (size(X,2) == 1) || (size(X,1) == 1)
     groups = unique(group_ind);
     % Sort data into a cell array
     data = cell(length(groups), 2);
-    new_data = cell(length(groups), 2);    
+    new_data = cell(length(groups), 2);
+    plot_vars = cell(length(groups), 2);
     Xmax = -999;
     Xmin = 999;
     
     for i = 1:length(groups)
         data{i,1} = X(group_ind == groups(i));
         data{i,2} = group_ind(group_ind == groups(i));
-       
+        plot_vars{i,1} = Color(group_ind == groups(i),:);
+        plot_vars{i,2} = FillMarker(group_ind == groups(i),:);
+        
         if (Xmin > floor(min(data{i,1})))
             Xmin = floor(min(data{i,1}));
         end
@@ -123,20 +145,23 @@ if (size(X,2) == 1) || (size(X,1) == 1)
             Xmax = ceil(max(data{i,1}));
         end
         
-    end    
+    end
 else
     %% Convert the matrix into cell array (after removing nans)
     group_names = Group;
     groups = 1:size(X,2);
     % Sort data into a cell array
     data = cell(length(groups), 2);
-    new_data = cell(length(groups), 2);    
+    new_data = cell(length(groups), 2);
+    plot_vars = cell(length(groups), 2);
     Xmax = -999;
     Xmin = 999;
     
     for i=1:length(groups)
         data{i,1} = X(~isnan(X(:,i)),i);
         data{i,2} = i*ones(size(data{i,1}));
+        plot_vars{i,1} = cell2mat(Color(~isnan(X(:,i)),i));
+        plot_vars{i,2} = FillMarker(~isnan(X(:,i)),i);
         
         if (Xmin > floor(min(data{i,1})))
             Xmin = floor(min(data{i,1}));
@@ -144,7 +169,7 @@ else
         
         if (Xmax < ceil(max(data{i,1})))
             Xmax = ceil(max(data{i,1}));
-        end        
+        end
     end
     
 end
@@ -179,7 +204,16 @@ end
 boxWidth = parsed.boxWidth;
 hold on;
 
-for i = 1:length(groups)    
+for i = 1:length(groups)
+    
+    if parsed.YYaxis
+        if (any(ismember(parsed.YYaxis,groups(i))))
+            yyaxis right;
+        else
+            yyaxis left;
+        end
+    end
+    
     imp_quantiles = quantile(new_data{i,1}, [0.25, 0.5, 0.75]);
     IQR = imp_quantiles(3) - imp_quantiles(1);
     whisker = [imp_quantiles(1) - 1.5 * IQR, ...
@@ -193,30 +227,18 @@ for i = 1:length(groups)
         'LineStyle', parsed.BoxLineStyle, 'LineWidth', parsed.BoxLineWidth);
     
     % Draw points
-    if parsed.FillMarker
-        if (ischar(parsed.Color)||size(parsed.Color,1))
-            scatter(new_data{i,2}, new_data{i,1}, parsed.MarkerSize, 'filled',...
-                parsed.Color);
-        else
-            scatter(new_data{i,2}, new_data{i,1}, parsed.MarkerSize, 'filled',...
-                parsed.Color(i,:));
-        end
-    else
-        if (ischar(parsed.Color)||size(parsed.Color,1))
-            scatter(new_data{i,2}, new_data{i,1}, parsed.MarkerSize, 'filled',...
-                parsed.Color);
-        else
-            scatter(new_data{i,2}, new_data{i,1}, parsed.MarkerSize, 'filled',...
-                parsed.Color(i,:));
-        end
-    end
+    scatter(new_data{i,2}(plot_vars{i,2}), new_data{i,1}(plot_vars{i,2}),...
+        parsed.MarkerSize, plot_vars{i,1}(plot_vars{i,2},:), 'filled');
+    scatter(new_data{i,2}(~plot_vars{i,2}), new_data{i,1}(~plot_vars{i,2}),...
+        parsed.MarkerSize, plot_vars{i,1}(~plot_vars{i,2},:));
     
     % Draw median
     plot([i-boxWidth/2, i+boxWidth/2], ...
         [imp_quantiles(2), imp_quantiles(2)], ...
         'LineStyle', parsed.MedianLineStyle, ...
         'Color', parsed.MedianColor,...
-        'LineWidth', parsed.MedianLineWidth);
+        'LineWidth', parsed.MedianLineWidth,...
+        'Marker','none');
     
     % Draw Q + 1.5 IQR
     temp = sortrows([whisker(2) - data{i,1}, (1:length(data{i,1}))'], 1);
@@ -225,14 +247,16 @@ for i = 1:length(groups)
         [new_data{i,1}(closest_point), new_data{i,1}(closest_point)], ...
         'LineStyle', '-', ...
         'Color', parsed.WhiskerColor,...
-        'LineWidth', parsed.WhiskerLineWidth);
+        'LineWidth', parsed.WhiskerLineWidth,...
+        'Marker','none');
     
     if parsed.WhiskerLine
-    % Draw top whiskers
-    plot([i, i], [new_data{i,1}(closest_point), imp_quantiles(3)],...
-        'LineStyle', parsed.WhiskerLineStyle, ...
-        'Color', parsed.WhiskerColor,...
-        'LineWidth', parsed.WhiskerLineWidth);
+        % Draw top whiskers
+        plot([i, i], [new_data{i,1}(closest_point), imp_quantiles(3)],...
+            'LineStyle', parsed.WhiskerLineStyle, ...
+            'Color', parsed.WhiskerColor,...
+            'LineWidth', parsed.WhiskerLineWidth,...
+            'Marker','none');
     end
     
     % Draw Q - 1.5 IQR
@@ -242,14 +266,16 @@ for i = 1:length(groups)
         [new_data{i,1}(closest_point), new_data{i,1}(closest_point)], ...
         'LineStyle', '-', ...
         'Color', parsed.WhiskerColor,...
-        'LineWidth', parsed.WhiskerLineWidth);
+        'LineWidth', parsed.WhiskerLineWidth,...
+        'Marker','none');
     
     if parsed.WhiskerLine
-    % Draw bottom whiskers
-    plot([i, i], [new_data{i,1}(closest_point), imp_quantiles(1)],...
-        'LineStyle', parsed.WhiskerLineStyle, ...
-        'Color', parsed.WhiskerColor,...
-        'LineWidth', parsed.WhiskerLineWidth);   
+        % Draw bottom whiskers
+        plot([i, i], [new_data{i,1}(closest_point), imp_quantiles(1)],...
+            'LineStyle', parsed.WhiskerLineStyle, ...
+            'Color', parsed.WhiskerColor,...
+            'LineWidth', parsed.WhiskerLineWidth,...
+            'Marker','none');
     end
     
 end
